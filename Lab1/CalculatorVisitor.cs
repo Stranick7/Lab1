@@ -8,7 +8,7 @@ using Antlr4.Runtime.Misc;
 
 namespace Lab1
 {
-    internal class CalculatorVisitor : CalculatorBaseVisitor<BigInteger>
+    public class CalculatorVisitor : CalculatorBaseVisitor<BigInteger>
     {
         Dictionary<string, BigInteger> TableId = new Dictionary<string, BigInteger>();
 

@@ -1,3 +1,6 @@
 <Solution>
   <Project Path="Lab1/Lab1.csproj" />
+  <Project Path="SpreadsheetUI/SpreadsheetUI.csproj" Id="2419f0c7-3e20-43a7-9da0-63f1f46c3875">
+    <Deploy />
+  </Project>
 </Solution>
