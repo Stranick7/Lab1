@@ -118,5 +118,13 @@ namespace SpreadsheetUI
                 cur.setHasError(true);
             }
         }
+        public int getRowCount() { return rowCount; }
+        public int getColCount() { return colCount; }
+        public Cell getCell(int row, int col)
+        {
+            String v = ((char)('A' + col)).ToString() + (row +  1) ;
+            return cells[v];
+        }
     }
+   
 }
