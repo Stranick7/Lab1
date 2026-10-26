@@ -24,6 +24,7 @@ namespace SpreadsheetUI
         }
         public string GetDisplayValue(bool isExprMode)
         {
+            if (string.IsNullOrEmpty(expression)) return "";
             if (hasError) return "ERROR";
             if (isExprMode) return expression;
             else return computedValue.ToString();

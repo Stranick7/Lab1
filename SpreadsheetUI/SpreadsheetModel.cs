@@ -19,8 +19,8 @@ namespace SpreadsheetUI
         private int colCount;
         private CalculatorVisitor analyzer = new CalculatorVisitor();
         public SpreadsheetModel() {
-            rowCount = 5;
-            colCount = 10;
+            rowCount = 20;
+            colCount = 20;
             for(int i = 0; i < rowCount; i++)
             {
                 for (int j = 0; j < colCount; j++)
@@ -124,6 +124,15 @@ namespace SpreadsheetUI
         {
             String v = ((char)('A' + col)).ToString() + (row +  1) ;
             return cells[v];
+        }
+        public void DeleteRow()
+        {
+            if (rowCount > 1) rowCount--;
+        }
+
+        public void DeleteCol()
+        {
+            if (colCount > 1) colCount--;
         }
     }
    

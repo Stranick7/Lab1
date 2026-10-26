@@ -9,6 +9,8 @@
             <HorizontalStackLayout Spacing="10">
                 <Button Text="Додати рядок" Clicked="OnAddRowClicked" />
                 <Button Text="Додати стовпець" Clicked="OnAddColClicked" />
+                <Button Text="Видалити рядок" Clicked="OnDeleteRowClicked" />
+                <Button Text="Видалити стовпець" Clicked="OnDeleteColClicked" />
                 <Button Text="Зберегти" Clicked="OnSaveClicked" />
                 <Button Text="Завантажити" Clicked="OnLoadClicked" />
                 <Button Text="Довідка" Clicked="OnHelpClicked" />
