@@ -12,6 +12,7 @@ expr : '(' expr ')'					# Parens
 	| expr op=('+' | '-') expr			# AddSub
 	;
 
-	NUMBER : [0-9]+ ;
-	CELLREF : [A-Z]+ [0-9]+ ;
-	WS : [ \t\r\n]+ -> skip ;
+NUMBER : [0-9]+ ;
+CELLREF : [A-Z]+ [0-9]+ ;
+WS : [ \t\r\n]+ -> skip ;
+ERROR_CHAR : . ;
