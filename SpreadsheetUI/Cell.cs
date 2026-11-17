@@ -8,6 +8,7 @@ namespace SpreadsheetUI
         private string expression;
         private BigInteger computedValue;
         private bool hasError;
+        private string errorMessage;
 
         public Cell(string name)
         {
@@ -66,5 +67,19 @@ namespace SpreadsheetUI
         {
             return computedValue;
         }
+        public void setErrorMessage(string message)
+        {
+            this.errorMessage = message;
+        }
+
+        public string getErrorMessage()
+        {
+            return errorMessage;
+        }
+        public void setName(string name)
+        {
+            cellName = name;
+        }
     }
+
 }

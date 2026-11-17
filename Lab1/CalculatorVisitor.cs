@@ -25,15 +25,25 @@ namespace Lab1
             BigInteger first = Visit(context.expr(0));
             BigInteger second = Visit(context.expr(1));
             if (context.op.Text == "*") return first * second;
-            if (second == 0) throw new DivideByZeroException();
+            if (second == 0) throw new DivideByZeroException("Ділення на нуль");
             return first / second;
         }
-
+        public override BigInteger VisitUnaryMinus(CalculatorParser.UnaryMinusContext context)
+        {
+            return -Visit(context.expr());
+        }
         public override BigInteger VisitPower(CalculatorParser.PowerContext context)
         {
             BigInteger first = Visit(context.expr(0));
             BigInteger second = Visit(context.expr(1));
-            if (second < 0 || second > int.MaxValue) throw new ArgumentOutOfRangeException();
+
+            if (second < 0)
+            {
+                if (first == 0) throw new DivideByZeroException("Ділення на нуль при від'ємному степені");
+                return 1 / BigInteger.Pow(first, (int)(-second));
+            }
+            if (second > int.MaxValue)
+                throw new ArgumentOutOfRangeException(null, "Показник степеня занадто великий");
             return BigInteger.Pow(first, (int)second);
         }
 

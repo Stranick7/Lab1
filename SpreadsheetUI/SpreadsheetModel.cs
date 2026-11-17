@@ -44,47 +44,120 @@ namespace SpreadsheetUI
             return GetColumnName(col) + (row + 1);
         }
 
-        public void AddRow()
+        public void AddRow(int rowIndex = -1)
         {
+            if (rowIndex < 0 || rowIndex >= rowCount)
+                rowIndex = rowCount;
+            for (int r = rowCount - 1; r >= rowIndex; r--)
+            {
+                for (int c = 0; c < colCount; c++)
+                {
+                    string oldName = GetCellName(r, c);
+                    string newName = GetCellName(r + 1, c);
+                    if (cells.ContainsKey(oldName))
+                    {
+                        Cell cell = cells[oldName];
+                        cells.Remove(oldName);
+                        cell.setName(newName);
+                        cells[newName] = cell;
+                    }
+                }
+            }
             rowCount++;
             for (int j = 0; j < colCount; j++)
             {
-                string v = GetCellName(rowCount - 1, j);
+                string v = GetCellName(rowIndex, j);
                 cells[v] = new Cell(v);
             }
             RecalculateAll();
         }
 
-        public void AddCol()
+        public void AddCol(int colIndex = -1)
         {
+            if (colIndex < 0 || colIndex >= colCount)
+                colIndex = colCount;
+            for (int c = colCount - 1; c >= colIndex; c--)
+            {
+                for (int r = 0; r < rowCount; r++)
+                {
+                    string oldName = GetCellName(r, c);
+                    string newName = GetCellName(r, c + 1);
+                    if (cells.ContainsKey(oldName))
+                    {
+                        Cell cell = cells[oldName];
+                        cells.Remove(oldName);
+                        cell.setName(newName);
+                        cells[newName] = cell;
+                    }
+                }
+            }
             colCount++;
+
             for (int i = 0; i < rowCount; i++)
             {
-                string v = GetCellName(i, colCount - 1);
+                string v = GetCellName(i, colIndex);
                 cells[v] = new Cell(v);
             }
             RecalculateAll();
         }
 
-        public void DeleteRow()
+        public void DeleteRow(int rowIndex = -1)
         {
             if (rowCount <= 1) return;
-            for (int j = 0; j < colCount; j++)
+            if (rowIndex < 0 || rowIndex >= rowCount)
+                rowIndex = rowCount - 1;
+
+            for (int c = 0; c < colCount; c++)
             {
-                string v = GetCellName(rowCount - 1, j);
+                string v = GetCellName(rowIndex, c);
                 cells.Remove(v);
+            }
+
+            for (int r = rowIndex + 1; r < rowCount; r++)
+            {
+                for (int c = 0; c < colCount; c++)
+                {
+                    string oldName = GetCellName(r, c);
+                    string newName = GetCellName(r - 1, c);
+                    if (cells.ContainsKey(oldName))
+                    {
+                        Cell cell = cells[oldName];
+                        cells.Remove(oldName);
+                        cell.setName(newName);
+                        cells[newName] = cell;
+                    }
+                }
             }
             rowCount--;
             RecalculateAll();
         }
 
-        public void DeleteCol()
+        public void DeleteCol(int colIndex = -1)
         {
             if (colCount <= 1) return;
-            for (int i = 0; i < rowCount; i++)
+            if (colIndex < 0 || colIndex >= colCount)
+                colIndex = colCount - 1;
+
+            for (int r = 0; r < rowCount; r++)
             {
-                string v = GetCellName(i, colCount - 1);
+                string v = GetCellName(r, colIndex);
                 cells.Remove(v);
+            }
+
+            for (int c = colIndex + 1; c < colCount; c++)
+            {
+                for (int r = 0; r < rowCount; r++)
+                {
+                    string oldName = GetCellName(r, c);
+                    string newName = GetCellName(r, c - 1);
+                    if (cells.ContainsKey(oldName))
+                    {
+                        Cell cell = cells[oldName];
+                        cells.Remove(oldName);
+                        cell.setName(newName);
+                        cells[newName] = cell;
+                    }
+                }
             }
             colCount--;
             RecalculateAll();
@@ -174,7 +247,7 @@ namespace SpreadsheetUI
         {
             if (!cells.ContainsKey(cellName))
             {
-                throw new ArgumentException("Клітинка не існує");
+                throw new ArgumentException($"Клітинка {cellName} не існує");
             }
 
             Cell cell = cells[cellName];
@@ -182,14 +255,15 @@ namespace SpreadsheetUI
             if (evaluating.Contains(cellName))
             {
                 cell.setHasError(true);
-                throw new InvalidOperationException("Циклічне посилання");
+                cell.setErrorMessage("Циклічне посилання між клітинками");
+                throw new InvalidOperationException($"Циклічне посилання ({cellName})");
             }
 
             if (evaluated.Contains(cellName))
             {
                 if (cell.getHasError())
                 {
-                    throw new ArgumentException("Помилка в клітинці");
+                    throw new ArgumentException($"Помилка в клітинці {cellName}: {cell.getErrorMessage()}");
                 }
                 return cell.getComputedValue();
             }
@@ -200,6 +274,7 @@ namespace SpreadsheetUI
             if (string.IsNullOrWhiteSpace(input))
             {
                 cell.setHasError(false);
+                cell.setErrorMessage(null);
                 cell.computedValueZero();
                 evaluating.Remove(cellName);
                 evaluated.Add(cellName);
@@ -216,7 +291,7 @@ namespace SpreadsheetUI
 
                 if (parser.NumberOfSyntaxErrors > 0)
                 {
-                    throw new ArgumentException("Синтаксична помилка");
+                    throw new ArgumentException("Синтаксична помилка у формулі");
                 }
 
                 CalculatorVisitor visitor = new CalculatorVisitor(refName => EvaluateCell(refName, evaluating, evaluated));
@@ -224,13 +299,15 @@ namespace SpreadsheetUI
 
                 cell.setComputedValue(result);
                 cell.setHasError(false);
+                cell.setErrorMessage(null);
                 evaluating.Remove(cellName);
                 evaluated.Add(cellName);
                 return result;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 cell.setHasError(true);
+                cell.setErrorMessage(ex.Message);
                 cell.computedValueZero();
                 evaluating.Remove(cellName);
                 evaluated.Add(cellName);

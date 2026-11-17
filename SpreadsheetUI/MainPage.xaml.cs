@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
@@ -11,6 +12,8 @@ namespace SpreadsheetUI
         private SpreadsheetModel model = new SpreadsheetModel();
         private bool isExprMode = true;
         private Entry[,] cellEntries;
+        private int selectedRow = -1;
+        private int selectedCol = -1;
 
         public MainPage()
         {
@@ -75,7 +78,26 @@ namespace SpreadsheetUI
                         WidthRequest = 100,
                         HeightRequest = 40
                     };
+                    MenuFlyout flyout = new MenuFlyout();
 
+                    MenuFlyoutItem addRowItem = new MenuFlyoutItem { Text = "Додати рядок" };
+                    addRowItem.Clicked += (s, e) => { model.AddRow(r); RebuildGrid(); };
+
+                    MenuFlyoutItem addColItem = new MenuFlyoutItem { Text = "Додати стовпець" };
+                    addColItem.Clicked += (s, e) => { model.AddCol(c); RebuildGrid(); };
+
+                    MenuFlyoutItem delRowItem = new MenuFlyoutItem { Text = "Видалити рядок" };
+                    delRowItem.Clicked += (s, e) => { InfoPanel.IsVisible = false; model.DeleteRow(r); RebuildGrid(); };
+
+                    MenuFlyoutItem delColItem = new MenuFlyoutItem { Text = "Видалити стовпець" };
+                    delColItem.Clicked += (s, e) => { InfoPanel.IsVisible = false; model.DeleteCol(c); RebuildGrid(); };
+
+                    flyout.Add(addRowItem);
+                    flyout.Add(addColItem);
+                    flyout.Add(delRowItem);
+                    flyout.Add(delColItem);
+
+                    FlyoutBase.SetContextFlyout(entry, flyout);
                     Cell cell = model.getCell(r, c);
                     if (cell != null)
                     {
@@ -84,10 +106,21 @@ namespace SpreadsheetUI
 
                     entry.Focused += (s, e) =>
                     {
+                        selectedRow = r;
+                        selectedCol = c;
                         Cell curCell = model.getCell(r, c);
                         if (curCell != null)
                         {
                             entry.Text = curCell.getExpression() ?? "";
+                        }
+                        UpdateInfoPanel(r, c, entry.Text);
+                    };
+
+                    entry.TextChanged += (s, e) =>
+                    {
+                        if (entry.IsFocused && selectedRow == r && selectedCol == c)
+                        {
+                            LblCellExpression.Text = $"Вираз: {(string.IsNullOrEmpty(e.NewTextValue) ? "(порожньо)" : e.NewTextValue)}";
                         }
                     };
 
@@ -95,12 +128,17 @@ namespace SpreadsheetUI
                     {
                         model.ProcessInput(r, c, entry.Text);
                         UpdateGridValues();
+                        UpdateInfoPanel(r, c);
                     };
 
                     entry.Unfocused += (s, e) =>
                     {
                         model.ProcessInput(r, c, entry.Text);
                         UpdateGridValues();
+                        if (selectedRow == r && selectedCol == c)
+                        {
+                            UpdateInfoPanel(r, c);
+                        }
                     };
 
                     cellEntries[r, c] = entry;
@@ -109,6 +147,46 @@ namespace SpreadsheetUI
                     SpreadsheetGrid.Children.Add(entry);
                 }
             }
+        }
+
+        private void UpdateInfoPanel(int r, int c, string liveText = null)
+        {
+            Cell cell = model.getCell(r, c);
+            if (cell == null)
+            {
+                InfoPanel.IsVisible = false;
+                return;
+            }
+
+            InfoPanel.IsVisible = true;
+            LblCellTitle.Text = $"Клітинка: {cell.getName()}";
+
+            string expr = liveText ?? cell.getExpression();
+            LblCellExpression.Text = $"Вираз: {(string.IsNullOrWhiteSpace(expr) ? "(порожньо)" : expr)}";
+
+            if (string.IsNullOrWhiteSpace(cell.getExpression()))
+            {
+                LblCellValue.Text = "Значення: (порожньо)";
+                LblCellError.IsVisible = false;
+            }
+            else if (cell.getHasError())
+            {
+                LblCellValue.Text = "Значення: ERROR";
+                LblCellError.Text = $"Причина помилки: {cell.getErrorMessage()}";
+                LblCellError.IsVisible = true;
+            }
+            else
+            {
+                LblCellValue.Text = $"Значення: {cell.getComputedValue()}";
+                LblCellError.IsVisible = false;
+            }
+        }
+
+        private void OnCloseInfoPanelClicked(object sender, EventArgs e)
+        {
+            InfoPanel.IsVisible = false;
+            selectedRow = -1;
+            selectedCol = -1;
         }
 
         public void UpdateGridValues()
@@ -139,13 +217,13 @@ namespace SpreadsheetUI
 
         private void OnAddRowClicked(object sender, EventArgs e)
         {
-            model.AddRow();
+            model.AddRow(selectedRow);
             RebuildGrid();
         }
 
         private void OnAddColClicked(object sender, EventArgs e)
         {
-            model.AddCol();
+            model.AddCol(selectedCol);
             RebuildGrid();
         }
 
@@ -156,30 +234,89 @@ namespace SpreadsheetUI
             UpdateGridValues();
         }
 
-        private void OnSaveClicked(object sender, EventArgs e)
+        private async void OnSaveClicked(object sender, EventArgs e)
         {
-            string path = Path.Combine(FileSystem.AppDataDirectory, "table.json");
-            bool success = model.SaveData(path);
+            try
+            {
+                string path = null;
 
-            if (success)
-                DisplayAlert("Успіх", "Таблицю успішно збережено!", "OK");
-            else
-                DisplayAlert("Помилка", "Не вдалося зберегти дані.", "OK");
+#if WINDOWS
+                var savePicker = new Windows.Storage.Pickers.FileSavePicker();
+                savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                savePicker.FileTypeChoices.Add("JSON файл таблиці", new List<string>() { ".json" });
+                savePicker.SuggestedFileName = "table";
+
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this.Window.Handler.PlatformView);
+                WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
+
+                var file = await savePicker.PickSaveFileAsync();
+                if (file == null)
+                    return;
+
+                path = file.Path;
+#else
+                string fileName = await DisplayPromptAsync("Збереження", "Введіть назву файлу:", "Зберегти", "Скасувати", initialValue: "table.json");
+                if (string.IsNullOrWhiteSpace(fileName))
+                    return;
+
+                if (!fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                    fileName += ".json";
+
+                path = Path.Combine(FileSystem.AppDataDirectory, fileName);
+#endif
+
+                bool success = model.SaveData(path);
+
+                if (success)
+                    await DisplayAlert("Успіх", $"Таблицю успішно збережено:\n{path}", "OK");
+                else
+                    await DisplayAlert("Помилка", "Не вдалося зберегти дані.", "OK");
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Помилка", $"Не вдалося зберегти файл: {ex.Message}", "OK");
+            }
         }
 
-        private void OnLoadClicked(object sender, EventArgs e)
+        private async void OnLoadClicked(object sender, EventArgs e)
         {
-            string path = Path.Combine(FileSystem.AppDataDirectory, "table.json");
-            bool success = model.LoadData(path);
+            try
+            {
+                var jsonFileType = new FilePickerFileType(
+                    new Dictionary<DevicePlatform, IEnumerable<string>>
+                    {
+                        { DevicePlatform.WinUI, new[] { ".json" } },
+                        { DevicePlatform.macOS, new[] { "json" } },
+                        { DevicePlatform.Android, new[] { "application/json" } },
+                        { DevicePlatform.iOS, new[] { "public.json" } }
+                    });
 
-            if (success)
-            {
-                RebuildGrid();
-                DisplayAlert("Успіх", "Таблицю завантажено!", "OK");
+                var options = new PickOptions
+                {
+                    PickerTitle = "Оберіть файл таблиці (.json)",
+                    FileTypes = jsonFileType
+                };
+
+                var result = await FilePicker.Default.PickAsync(options);
+                if (result == null)
+                    return;
+
+                bool success = model.LoadData(result.FullPath);
+
+                if (success)
+                {
+                    InfoPanel.IsVisible = false;
+                    RebuildGrid();
+                    await DisplayAlert("Успіх", $"Таблицю завантажено:\n{result.FullPath}", "OK");
+                }
+                else
+                {
+                    await DisplayAlert("Помилка", "Не вдалося завантажити дані або файл пошкоджено.", "OK");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                DisplayAlert("Помилка", "Не вдалося завантажити дані або файл не існує.", "OK");
+                await DisplayAlert("Помилка", $"Не вдалося відкрити файл: {ex.Message}", "OK");
             }
         }
 
@@ -190,13 +327,17 @@ namespace SpreadsheetUI
 
         private void OnDeleteRowClicked(object sender, EventArgs e)
         {
-            model.DeleteRow();
+            InfoPanel.IsVisible = false;
+            model.DeleteRow(selectedRow);
+            selectedRow = -1;
             RebuildGrid();
         }
 
         private void OnDeleteColClicked(object sender, EventArgs e)
         {
-            model.DeleteCol();
+            InfoPanel.IsVisible = false;
+            model.DeleteCol(selectedCol);
+            selectedCol = -1;
             RebuildGrid();
         }
     }

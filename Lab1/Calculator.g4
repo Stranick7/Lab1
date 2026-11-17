@@ -7,6 +7,7 @@ expr : '(' expr ')'					# Parens
 	| 'min' '(' expr ',' expr ')'	# MinFunc
 	| NUMBER						# Number
 	| CELLREF						# CellRef
+	| '-' expr						# UnaryMinus
 	| <assoc=right> expr op='^' expr	# Power
 	| expr op=('*' | '/') expr			# MulDiv
 	| expr op=('+' | '-') expr			# AddSub

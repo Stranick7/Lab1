@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="SpreadsheetUI.MainPage">
 
-    <Grid RowDefinitions="Auto, *">
+    <Grid RowDefinitions="Auto, *, Auto">
 
         <ScrollView Grid.Row="0" Orientation="Horizontal" Margin="5">
             <HorizontalStackLayout Spacing="10">
@@ -21,6 +21,33 @@
         <ScrollView Grid.Row="1" Orientation="Both" Margin="5">
             <Grid x:Name="SpreadsheetGrid" RowSpacing="2" ColumnSpacing="2" />
         </ScrollView>
+
+        <Border x:Name="InfoPanel"
+                Grid.Row="2"
+                IsVisible="False"
+                Margin="5"
+                Padding="12"
+                StrokeThickness="1"
+                Stroke="#888888"
+                BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}">
+            <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                <VerticalStackLayout Grid.Column="0" Spacing="4">
+                    <Label x:Name="LblCellTitle" FontAttributes="Bold" FontSize="15" />
+                    <Label x:Name="LblCellExpression" LineBreakMode="WordWrap" FontSize="14" />
+                    <Label x:Name="LblCellValue" FontSize="14" />
+                    <Label x:Name="LblCellError"
+                           TextColor="#D32F2F"
+                           FontAttributes="Bold"
+                           LineBreakMode="WordWrap"
+                           FontSize="14"
+                           IsVisible="False" />
+                </VerticalStackLayout>
+                <Button Grid.Column="1"
+                        Text="✕"
+                        VerticalOptions="Start"
+                        Clicked="OnCloseInfoPanelClicked" />
+            </Grid>
+        </Border>
 
     </Grid>
 </ContentPage>
