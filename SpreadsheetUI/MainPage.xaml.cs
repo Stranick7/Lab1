@@ -81,10 +81,10 @@ namespace SpreadsheetUI
                     MenuFlyout flyout = new MenuFlyout();
 
                     MenuFlyoutItem addRowItem = new MenuFlyoutItem { Text = "Додати рядок" };
-                    addRowItem.Clicked += (s, e) => { model.AddRow(r); RebuildGrid(); };
+                    addRowItem.Clicked += (s, e) => { InfoPanel.IsVisible = false; model.AddRow(r); RebuildGrid(); };
 
                     MenuFlyoutItem addColItem = new MenuFlyoutItem { Text = "Додати стовпець" };
-                    addColItem.Clicked += (s, e) => { model.AddCol(c); RebuildGrid(); };
+                    addColItem.Clicked += (s, e) => { InfoPanel.IsVisible = false; model.AddCol(c); RebuildGrid(); };
 
                     MenuFlyoutItem delRowItem = new MenuFlyoutItem { Text = "Видалити рядок" };
                     delRowItem.Clicked += (s, e) => { InfoPanel.IsVisible = false; model.DeleteRow(r); RebuildGrid(); };
@@ -217,12 +217,14 @@ namespace SpreadsheetUI
 
         private void OnAddRowClicked(object sender, EventArgs e)
         {
+            InfoPanel.IsVisible = false;
             model.AddRow(selectedRow);
             RebuildGrid();
         }
 
         private void OnAddColClicked(object sender, EventArgs e)
         {
+            InfoPanel.IsVisible = false;
             model.AddCol(selectedCol);
             RebuildGrid();
         }

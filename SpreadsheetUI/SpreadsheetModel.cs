@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace SpreadsheetUI
 {
@@ -43,7 +44,68 @@ namespace SpreadsheetUI
         {
             return GetColumnName(col) + (row + 1);
         }
+        public static int GetColumnIndex(string colName)
+        {
+            int index = 0;
+            foreach (char c in colName)
+            {
+                index = index * 26 + (c - 'A' + 1);
+            }
+            return index - 1;
+        }
 
+        private void UpdateFormulas(bool isRow, int index, bool isAdd)
+        {
+            Regex cellRefRegex = new Regex(@"\b([A-Z]+)([0-9]+)\b");
+
+            foreach (Cell cell in cells.Values)
+            {
+                string expr = cell.getExpression();
+                if (string.IsNullOrWhiteSpace(expr)) continue;
+
+                string updatedExpr = cellRefRegex.Replace(expr, match =>
+                {
+                    string colPart = match.Groups[1].Value;
+                    if (!int.TryParse(match.Groups[2].Value, out int rowNum))
+                        return match.Value;
+
+                    int refRow = rowNum - 1;
+                    int refCol = GetColumnIndex(colPart);
+
+                    if (isRow)
+                    {
+                        if (isAdd)
+                        {
+                            if (refRow >= index) refRow++;
+                        }
+                        else
+                        {
+                            if (refRow == index) return "#REF!";
+                            if (refRow > index) refRow--;
+                        }
+                    }
+                    else
+                    {
+                        if (isAdd)
+                        {
+                            if (refCol >= index) refCol++;
+                        }
+                        else
+                        {
+                            if (refCol == index) return "#REF!";
+                            if (refCol > index) refCol--;
+                        }
+                    }
+
+                    return GetCellName(refRow, refCol);
+                });
+
+                if (updatedExpr != expr)
+                {
+                    cell.SetExpression(updatedExpr);
+                }
+            }
+        }
         public void AddRow(int rowIndex = -1)
         {
             if (rowIndex < 0 || rowIndex >= rowCount)
@@ -69,6 +131,7 @@ namespace SpreadsheetUI
                 string v = GetCellName(rowIndex, j);
                 cells[v] = new Cell(v);
             }
+            UpdateFormulas(true, rowIndex, true);
             RecalculateAll();
         }
 
@@ -98,6 +161,7 @@ namespace SpreadsheetUI
                 string v = GetCellName(i, colIndex);
                 cells[v] = new Cell(v);
             }
+            UpdateFormulas(false, colIndex, true);
             RecalculateAll();
         }
 
@@ -129,6 +193,7 @@ namespace SpreadsheetUI
                 }
             }
             rowCount--;
+            UpdateFormulas(true, rowIndex, false);
             RecalculateAll();
         }
 
@@ -160,6 +225,7 @@ namespace SpreadsheetUI
                 }
             }
             colCount--;
+            UpdateFormulas(false, colIndex, false);
             RecalculateAll();
         }
 
@@ -283,6 +349,10 @@ namespace SpreadsheetUI
 
             try
             {
+                if (input.Contains("#REF!"))
+                {
+                    throw new ArgumentException("Посилання на видалену клітинку (#REF!)");
+                }
                 AntlrInputStream ant = new AntlrInputStream(input);
                 CalculatorLexer lex = new CalculatorLexer(ant);
                 CommonTokenStream com = new CommonTokenStream(lex);
